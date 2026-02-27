@@ -1,5 +1,7 @@
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RBACSystem {
     private final UserManager userManager;
@@ -103,12 +105,50 @@ public class RBACSystem {
         long activeCount = allAssignments.stream().filter(RoleAssignment::isActive).count();
         long expiredCount = assignmentCount - activeCount;
             
+        //подсчет ролей на пользователя
+        double avgRolesPerUser = 0;
+        if (userCount > 0) {
+            int totalRolesAssigned = 0;
+            for (User user : userManager.findAll()) {
+                totalRolesAssigned += assignmentManager.findByUser(user).size();
+            }
+            avgRolesPerUser = (double) totalRolesAssigned / userCount;
+        }
+
+        //топ-3 самых популярных ролей
+        Map<String, Integer> rolePopularity = new HashMap<>();
+        
+        //cчитаем, сколько раз каждая роль назначена
+        for (RoleAssignment assignment : allAssignments) {
+            String roleName = assignment.role().getName();
+            rolePopularity.put(roleName, rolePopularity.getOrDefault(roleName, 0) + 1);
+        }
+        
+        //cортируем роли по популярности и берем топ-3
+        List<Map.Entry<String, Integer>> sortedRoles = rolePopularity.entrySet().stream()
+            .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+            .limit(3)
+            .toList();
+
         sb.append("Статистика системы: \n");
         sb.append(String.format("Пользователей: %d\n", userCount));
         sb.append(String.format("Ролей: %d\n", roleCount));
         sb.append(String.format("Назначений всего: %d\n", assignmentCount));
         sb.append(String.format("  Активных: %d\n", activeCount));
         sb.append(String.format("  Истекших: %d\n", expiredCount));
+        sb.append(String.format("Среднее количество ролей на пользователя: %.2f\n", avgRolesPerUser));
+
+        sb.append("\nТоп-3 самых популярных ролей: \n");
+        if (sortedRoles.isEmpty()) {
+            sb.append("  Нет назначенных ролей\n");
+        } else {
+            int place = 1;
+            for (Map.Entry<String, Integer> entry : sortedRoles) {
+                sb.append(String.format("  %d. %s - %d назначений\n", 
+                    place++, entry.getKey(), entry.getValue()));
+            }
+        }
+
         return sb.toString();
     }
 

@@ -40,7 +40,7 @@ public class CommandParser {
                 System.out.println("Ошибка при выполнении команды: " + e.getMessage());
             }
         } else {
-            System.out.println("Неизвестная команда.");
+            System.out.println("Неизвестная команда. Введите 'help' для списка команд.");
         }
     }
 

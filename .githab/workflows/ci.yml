@@ -22,10 +22,10 @@ jobs:
     - name: Compile
       run: javac *.java
     
-    - name: Test
+    - name: Run CommandTests
       run: java CommandTests
       continue-on-error: false
 
-    - name: Test
+    - name: Run ManagerTest
       run: java ManagerTest
       continue-on-error: false

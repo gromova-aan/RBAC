@@ -38,6 +38,8 @@ public class CommandRegistry {
                 
                 User user = User.validate(username, fullName, email);
                 sys.getUserManager().add(user);
+
+                sys.getAuditLog().log("CREATE_USER", sys.getCurrentUser(), username, "Создан пользователь");
                 
                 System.out.println("Пользователь успешно создан!");
             } catch (IllegalArgumentException e) {
@@ -147,6 +149,9 @@ public class CommandRegistry {
                 }
                 
                 sys.getUserManager().remove(user);
+
+                sys.getAuditLog().log("DELETE_USER", sys.getCurrentUser(), username, "Удален пользователь");
+
                 System.out.println("Пользователь удален");
             } else {
                 System.out.println("Удаление отменено");
@@ -239,6 +244,8 @@ public class CommandRegistry {
                 
                 Role role = new Role(name, description);
                 sys.getRoleManager().add(role);
+
+                sys.getAuditLog().log("CREATE_ROLE", sys.getCurrentUser(), name, "Создана роль");
                 
                 System.out.println("Роль создана. ID: " + role.getId());
                 
@@ -366,6 +373,7 @@ public class CommandRegistry {
             }
             
             sys.getRoleManager().remove(role);
+            sys.getAuditLog().log("DELETE_ROLE", sys.getCurrentUser(), name, "Удалена роль");
             System.out.println("Роль удалена");
         });
 
@@ -561,6 +569,7 @@ public class CommandRegistry {
                 if (typeChoice.equals("1")) {
                     PermanentAssignment assignment = new PermanentAssignment(user, selectedRole, meta);
                     sys.getAssignmentManager().add(assignment);
+                    sys.getAuditLog().log("ASSIGN_ROLE", sys.getCurrentUser(), username, "Назначена постоянная роль " + selectedRole.getName());
                     System.out.println("Постоянное назначение создано. ID: " + assignment.assignmentId());
                 } else if (typeChoice.equals("2")) {
                     System.out.print("Введите дату истечения (ГГГГ-ММ-ДД): ");
@@ -633,6 +642,7 @@ public class CommandRegistry {
                 if (toRevoke instanceof PermanentAssignment) {
                     //для постоянных - отзываем
                     sys.getAssignmentManager().revokeAssignment(toRevoke.assignmentId());
+                    sys.getAuditLog().log("REVOKE_ROLE", sys.getCurrentUser(), username, "Отозвана роль " + toRevoke.role().getName());
                     System.out.println("Назначение отозвано");
                 } else if (toRevoke instanceof TemporaryAssignment) {
                     //для временных - помечаем как истекшие
@@ -1058,6 +1068,59 @@ public class CommandRegistry {
                 System.exit(0);
             } else {
                 System.out.println("Выход отменен");
+            }
+        });
+
+        parser.registerCommand("audit-log", "Просмотр журнала аудита", (scanner, sys) -> {
+            System.out.println("\n1. Показать все записи");
+            System.out.println("2. Показать по исполнителю");
+            System.out.println("3. Показать по действию");
+            System.out.println("4. Сохранить в файл");
+            System.out.print("Выберите опцию (1-4): ");
+            
+            String choice = scanner.nextLine().trim();
+            
+            switch (choice) {
+                case "1":
+                    sys.getAuditLog().printLog();
+                    break;
+                    
+                case "2":
+                    System.out.print("Введите имя исполнителя: ");
+                    String performer = scanner.nextLine().trim();
+                    var byPerformer = sys.getAuditLog().getByPerformer(performer);
+                    if (byPerformer.isEmpty()) {
+                        System.out.println("Записей не найдено");
+                    } else {
+                        System.out.println("\n=== ЗАПИСИ ДЛЯ " + performer + " ===\n");
+                        byPerformer.forEach(e -> 
+                            System.out.printf("[%s] %s -> %s: %s\n",
+                                e.timestamp(), e.action(), e.target(), e.details()));
+                    }
+                    break;
+                    
+                case "3":
+                    System.out.print("Введите действие: ");
+                    String action = scanner.nextLine().trim();
+                    var byAction = sys.getAuditLog().getByAction(action);
+                    if (byAction.isEmpty()) {
+                        System.out.println("Записей не найдено");
+                    } else {
+                        System.out.println("\n=== ЗАПИСИ ДЛЯ ДЕЙСТВИЯ " + action + " ===\n");
+                        byAction.forEach(e -> 
+                            System.out.printf("[%s] %s -> %s: %s\n",
+                                e.timestamp(), e.performer(), e.target(), e.details()));
+                    }
+                    break;
+                    
+                case "4":
+                    System.out.print("Введите имя файла: ");
+                    String filename = scanner.nextLine().trim();
+                    sys.getAuditLog().saveToFile(filename);
+                    break;
+                    
+                default:
+                    System.out.println("Неверный выбор");
             }
         });
     }

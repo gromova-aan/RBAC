@@ -1,3 +1,6 @@
+
+import java.util.List;
+
 public class CommandRegistry {
     public static void registerAllCommands(CommandParser parser, RBACSystem system) {
         
@@ -10,16 +13,18 @@ public class CommandRegistry {
                 return;
             }
             
-            System.out.println("\n--- СПИСОК ПОЛЬЗОВАТЕЛЕЙ ---");
-            System.out.printf("%-15s %-25s %-30s\n", "USERNAME", "FULL NAME", "EMAIL");
-            System.out.println("-------------------------------------------------------------");
+            String[] headers = {"USERNAME", "FULL NAME", "EMAIL"};
+            List<String[]> rows = new java.util.ArrayList<>();
 
             for (User user : users) {
-                System.out.printf("%-15s %-25s %-30s\n", 
-                    user.username(), 
-                    user.fullName(), 
-                    user.email());
+                rows.add(new String[]{
+                    user.username(),
+                    user.fullName(),
+                    user.email()
+                });
             }
+            System.out.println(FormatUtils.formatHeader("СПИСОК ПОЛЬЗОВАТЕЛЕЙ"));
+            System.out.println(FormatUtils.formatTable(headers, rows));
             System.out.println("Всего: " + users.size());
         });
 

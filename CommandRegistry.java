@@ -1,4 +1,3 @@
-
 public class CommandRegistry {
     public static void registerAllCommands(CommandParser parser, RBACSystem system) {
         
@@ -27,14 +26,9 @@ public class CommandRegistry {
 
         parser.registerCommand("user-create", "Создать нового пользователя", (scanner, sys) -> {
             try {
-                System.out.print("Введите username (латиница, цифры, _, от 3 до 20 символов): ");
-                String username = scanner.nextLine().trim();
-                
-                System.out.print("Введите полное имя: ");
-                String fullName = scanner.nextLine().trim();
-                
-                System.out.print("Введите email: ");
-                String email = scanner.nextLine().trim();
+                String username = ConsoleUtils.promptString(scanner, "Введите username (латиница, цифры, _, от 3 до 20 символов)", true);
+                String fullName = ConsoleUtils.promptString(scanner, "Введите полное имя", true);
+                String email = ConsoleUtils.promptString(scanner, "Введите email", true);
                 
                 User user = User.validate(username, fullName, email);
                 sys.getUserManager().add(user);
@@ -46,11 +40,10 @@ public class CommandRegistry {
                 System.out.println("Ошибка: " + e.getMessage());
             }
         });
-        
+
         
         parser.registerCommand("user-view", "Просмотр информации о пользователе", (scanner, sys) -> {
-            System.out.print("Введите username: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -87,8 +80,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("user-update", "Обновить данные пользователя", (scanner, sys) -> {
-            System.out.print("Введите username: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -99,14 +91,12 @@ public class CommandRegistry {
             User user = userOpt.get();
             System.out.println("Текущие данные: " + user.format());
             
-            System.out.print("Новое полное имя (Enter - оставить текущее): ");
-            String fullName = scanner.nextLine().trim();
+            String fullName = ConsoleUtils.promptString(scanner, "Новое полное имя (Enter - оставить текущее)", false);
             if (fullName.isEmpty()) {
                 fullName = user.fullName();
             }
             
-            System.out.print("Новый email (Enter - оставить текущий): ");
-            String email = scanner.nextLine().trim();
+            String email = ConsoleUtils.promptString(scanner, "Новый email (Enter - оставить текущий)", false);
             if (email.isEmpty()) {
                 email = user.email();
             }
@@ -121,8 +111,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("user-delete", "Удалить пользователя", (scanner, sys) -> {
-            System.out.print("Введите username: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -140,18 +129,13 @@ public class CommandRegistry {
                 }
             }
             
-            System.out.print("Вы уверены? (да/нет): ");
-            String confirm = scanner.nextLine().trim().toLowerCase();
-            
-            if (confirm.equals("да")) {
+            if (ConsoleUtils.promptYesNo(scanner, "Вы уверены")) {
                 for (var a : assignments) {
                     sys.getAssignmentManager().remove(a);
                 }
                 
                 sys.getUserManager().remove(user);
-
                 sys.getAuditLog().log("DELETE_USER", sys.getCurrentUser(), username, "Удален пользователь");
-
                 System.out.println("Пользователь удален");
             } else {
                 System.out.println("Удаление отменено");
@@ -165,36 +149,28 @@ public class CommandRegistry {
             System.out.println("2. По email (содержит)");
             System.out.println("3. По домену email");
             System.out.println("4. По полному имени (содержит)");
-            System.out.print("Выберите фильтр (1-4): ");
             
-            String choice = scanner.nextLine().trim();
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите фильтр", 1, 4);
             
             UserFilter filter = null;
             
             switch (choice) {
-                case "1":
-                    System.out.print("Введите часть username: ");
-                    String usernamePart = scanner.nextLine().trim();
+                case 1:
+                    String usernamePart = ConsoleUtils.promptString(scanner, "Введите часть username", true);
                     filter = user -> user.username().toLowerCase().contains(usernamePart.toLowerCase());
                     break;
-                case "2":
-                    System.out.print("Введите часть email: ");
-                    String emailPart = scanner.nextLine().trim();
+                case 2:
+                    String emailPart = ConsoleUtils.promptString(scanner, "Введите часть email", true);
                     filter = user -> user.email().toLowerCase().contains(emailPart.toLowerCase());
                     break;
-                case "3":
-                    System.out.print("Введите домен (например @gmail.com): ");
-                    String domain = scanner.nextLine().trim();
+                case 3:
+                    String domain = ConsoleUtils.promptString(scanner, "Введите домен (например @gmail.com)", true);
                     filter = user -> user.email().toLowerCase().endsWith(domain.toLowerCase());
                     break;
-                case "4":
-                    System.out.print("Введите часть полного имени: ");
-                    String namePart = scanner.nextLine().trim();
+                case 4:
+                    String namePart = ConsoleUtils.promptString(scanner, "Введите часть полного имени", true);
                     filter = user -> user.fullName().toLowerCase().contains(namePart.toLowerCase());
                     break;
-                default:
-                    System.out.println("Неверный выбор");
-                    return;
             }
             
             var results = sys.getUserManager().findByFilter(filter);
@@ -236,11 +212,8 @@ public class CommandRegistry {
 
         parser.registerCommand("role-create", "Создать новую роль", (scanner, sys) -> {
             try {
-                System.out.print("Введите название роли: ");
-                String name = scanner.nextLine().trim();
-                
-                System.out.print("Введите описание роли: ");
-                String description = scanner.nextLine().trim();
+                String name = ConsoleUtils.promptString(scanner, "Введите название роли", true);
+                String description = ConsoleUtils.promptString(scanner, "Введите описание роли", true);
                 
                 Role role = new Role(name, description);
                 sys.getRoleManager().add(role);
@@ -249,29 +222,23 @@ public class CommandRegistry {
                 
                 System.out.println("Роль создана. ID: " + role.getId());
                 
-                System.out.print("Добавить права сейчас? (да/нет): ");
-                String addNow = scanner.nextLine().trim().toLowerCase();
-                
-                while (addNow.equals("да")) {
-                    System.out.print("Введите имя права (например READ): ");
-                    String permName = scanner.nextLine().trim().toUpperCase();
-                    
-                    System.out.print("Введите ресурс (например users): ");
-                    String resource = scanner.nextLine().trim().toLowerCase();
-                    
-                    System.out.print("Введите описание права: ");
-                    String permDesc = scanner.nextLine().trim();
-                    
-                    try {
-                        Permission perm = new Permission(permName, resource, permDesc);
-                        sys.getRoleManager().addPermissionToRole(name, perm);
-                        System.out.println("Право добавлено");
-                    } catch (IllegalArgumentException e) {
-                        System.out.println("Ошибка: " + e.getMessage());
+                if (ConsoleUtils.promptYesNo(scanner, "Добавить права сейчас")) {
+                    boolean addMore = true;
+                    while (addMore) {
+                        String permName = ConsoleUtils.promptString(scanner, "Введите имя права (например READ)", true).toUpperCase();
+                        String resource = ConsoleUtils.promptString(scanner, "Введите ресурс (например users)", true).toLowerCase();
+                        String permDesc = ConsoleUtils.promptString(scanner, "Введите описание права", true);
+                        
+                        try {
+                            Permission perm = new Permission(permName, resource, permDesc);
+                            sys.getRoleManager().addPermissionToRole(name, perm);
+                            System.out.println("Право добавлено");
+                        } catch (IllegalArgumentException e) {
+                            System.out.println("Ошибка: " + e.getMessage());
+                        }
+                        
+                        addMore = ConsoleUtils.promptYesNo(scanner, "Добавить еще право");
                     }
-                    
-                    System.out.print("Добавить еще право? (да/нет): ");
-                    addNow = scanner.nextLine().trim().toLowerCase();
                 }
                 
             } catch (IllegalArgumentException e) {
@@ -281,8 +248,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("role-view", "Просмотр информации о роли", (scanner, sys) -> {
-            System.out.print("Введите имя роли: ");
-            String name = scanner.nextLine().trim();
+            String name = ConsoleUtils.promptString(scanner, "Введите имя роли", true);
             
             var roleOpt = sys.getRoleManager().findByName(name);
             if (roleOpt.isEmpty()) {
@@ -296,8 +262,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("role-update", "Обновить название и описание роли", (scanner, sys) -> {
-            System.out.print("Введите имя роли для обновления: ");
-            String oldName = scanner.nextLine().trim();
+            String oldName = ConsoleUtils.promptString(scanner, "Введите имя роли для обновления", true);
             
             var roleOpt = sys.getRoleManager().findByName(oldName);
             if (roleOpt.isEmpty()) {
@@ -310,14 +275,12 @@ public class CommandRegistry {
             System.out.println("  Название: " + role.getName());
             System.out.println("  Описание: " + role.getDescription());
             
-            System.out.print("\nВведите новое название (Enter - оставить текущее): ");
-            String newName = scanner.nextLine().trim();
+            String newName = ConsoleUtils.promptString(scanner, "Введите новое название (Enter - оставить текущее)", false);
             if (newName.isEmpty()) {
                 newName = role.getName();
             }
             
-            System.out.print("Введите новое описание (Enter - оставить текущее): ");
-            String newDescription = scanner.nextLine().trim();
+            String newDescription = ConsoleUtils.promptString(scanner, "Введите новое описание (Enter - оставить текущее)", false);
             if (newDescription.isEmpty()) {
                 newDescription = role.getDescription();
             }
@@ -330,12 +293,10 @@ public class CommandRegistry {
             try {
                 Role updatedRole = new Role(newName, newDescription);
                 
-                //копируем все права из старой роли
                 for (Permission perm : role.getPermissions()) {
                     updatedRole.addPermission(perm);
                 }
                 
-                // Удаляем старую роль и добавляем новую
                 sys.getRoleManager().remove(role);
                 sys.getRoleManager().add(updatedRole);
                 
@@ -347,8 +308,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("role-delete", "Удалить роль", (scanner, sys) -> {
-            System.out.print("Введите имя роли: ");
-            String name = scanner.nextLine().trim();
+            String name = ConsoleUtils.promptString(scanner, "Введите имя роли", true);
             
             var roleOpt = sys.getRoleManager().findByName(name);
             if (roleOpt.isEmpty()) {
@@ -364,9 +324,8 @@ public class CommandRegistry {
                 for (var a : assignments) {
                     System.out.println("  - " + a.user().username());
                 }
-                System.out.print("Все равно удалить? (да/нет): ");
-                String confirm = scanner.nextLine().trim().toLowerCase();
-                if (!confirm.equals("да")) {
+                
+                if (!ConsoleUtils.promptYesNo(scanner, "Все равно удалить")) {
                     System.out.println("Удаление отменено");
                     return;
                 }
@@ -379,8 +338,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("role-add-permission", "Добавить право к роли", (scanner, sys) -> {
-            System.out.print("Введите имя роли: ");
-            String roleName = scanner.nextLine().trim();
+            String roleName = ConsoleUtils.promptString(scanner, "Введите имя роли", true);
             
             var roleOpt = sys.getRoleManager().findByName(roleName);
             if (roleOpt.isEmpty()) {
@@ -389,14 +347,9 @@ public class CommandRegistry {
             }
             
             try {
-                System.out.print("Введите имя права (например READ): ");
-                String permName = scanner.nextLine().trim().toUpperCase();
-                
-                System.out.print("Введите ресурс (например users): ");
-                String resource = scanner.nextLine().trim().toLowerCase();
-                
-                System.out.print("Введите описание права: ");
-                String permDesc = scanner.nextLine().trim();
+                String permName = ConsoleUtils.promptString(scanner, "Введите имя права (например READ)", true).toUpperCase();
+                String resource = ConsoleUtils.promptString(scanner, "Введите ресурс (например users)", true).toLowerCase();
+                String permDesc = ConsoleUtils.promptString(scanner, "Введите описание права", true);
                 
                 Permission perm = new Permission(permName, resource, permDesc);
                 sys.getRoleManager().addPermissionToRole(roleName, perm);
@@ -408,8 +361,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("role-remove-permission", "Удалить право из роли", (scanner, sys) -> {
-            System.out.print("Введите имя роли: ");
-            String roleName = scanner.nextLine().trim();
+            String roleName = ConsoleUtils.promptString(scanner, "Введите имя роли", true);
             
             var roleOpt = sys.getRoleManager().findByName(roleName);
             if (roleOpt.isEmpty()) {
@@ -431,28 +383,15 @@ public class CommandRegistry {
                 System.out.printf("  %d. %s\n", i + 1, p.format());
             }
             
-            System.out.print("\nВведите номер права для удаления (0 - отмена): ");
-            try {
-                int choice = Integer.parseInt(scanner.nextLine().trim());
-                if (choice == 0) {
-                    System.out.println("Удаление отменено");
-                    return;
-                }
-                
-                if (choice < 1 || choice > permissions.size()) {
-                    System.out.println("Неверный номер");
-                    return;
-                }
-                
-                Permission permToRemove = permissions.get(choice - 1);
-                sys.getRoleManager().removePermissionFromRole(roleName, permToRemove);
-                System.out.println("Право удалено из роли");
-                
-            } catch (NumberFormatException e) {
-                System.out.println("Ошибка ввода");
-            } catch (IllegalArgumentException e) {
-                System.out.println("Ошибка: " + e.getMessage());
+            int choice = ConsoleUtils.promptInt(scanner, "\nВведите номер права для удаления (0 - отмена)", 0, permissions.size());
+            if (choice == 0) {
+                System.out.println("Удаление отменено");
+                return;
             }
+            
+            Permission permToRemove = permissions.get(choice - 1);
+            sys.getRoleManager().removePermissionFromRole(roleName, permToRemove);
+            System.out.println("Право удалено из роли");
         });
 
 
@@ -461,46 +400,32 @@ public class CommandRegistry {
             System.out.println("1. По имени (содержит)");
             System.out.println("2. По наличию конкретного права");
             System.out.println("3. По минимальному количеству прав");
-            System.out.print("Выберите фильтр (1-3): ");
             
-            String choice = scanner.nextLine().trim();
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите фильтр", 1, 3);
+            
             RoleFilter filter = null;
             String filterDescription = "";
             
             switch (choice) {
-                case "1":
-                    System.out.print("Введите часть имени роли: ");
-                    String namePart = scanner.nextLine().trim();
+                case 1:
+                    String namePart = ConsoleUtils.promptString(scanner, "Введите часть имени роли", true);
                     filter = role -> role.getName().toLowerCase().contains(namePart.toLowerCase());
                     filterDescription = "имя содержит '" + namePart + "'";
                     break;
                     
-                case "2":
-                    System.out.print("Введите имя права (например READ): ");
-                    String permName = scanner.nextLine().trim().toUpperCase();
-                    
-                    System.out.print("Введите ресурс (например users): ");
-                    String resource = scanner.nextLine().trim().toLowerCase();
+                case 2:
+                    String permName = ConsoleUtils.promptString(scanner, "Введите имя права (например READ)", true).toUpperCase();
+                    String resource = ConsoleUtils.promptString(scanner, "Введите ресурс (например users)", true).toLowerCase();
                     
                     filter = role -> role.hasPermission(permName, resource);
                     filterDescription = "имеет право " + permName + " on " + resource;
                     break;
                     
-                case "3":
-                    System.out.print("Введите минимальное количество прав: ");
-                    try {
-                        int minCount = Integer.parseInt(scanner.nextLine().trim());
-                        filter = role -> role.getPermissions().size() >= minCount;
-                        filterDescription = "минимум " + minCount + " прав";
-                    } catch (NumberFormatException e) {
-                        System.out.println("Ошибка: введите число");
-                        return;
-                    }
+                case 3:
+                    int minCount = ConsoleUtils.promptInt(scanner, "Введите минимальное количество прав", 0, 100);
+                    filter = role -> role.getPermissions().size() >= minCount;
+                    filterDescription = "минимум " + minCount + " прав";
                     break;
-                    
-                default:
-                    System.out.println("Неверный выбор");
-                    return;
             }
             
             var results = sys.getRoleManager().findByFilter(filter);
@@ -525,8 +450,7 @@ public class CommandRegistry {
 
         //КОМАНДЫ УПРАВЛЕНИЯ НАЗНАЧЕНИЯМИ
         parser.registerCommand("assign-role", "Назначить роль пользователю", (scanner, sys) -> {
-            System.out.print("Введите username пользователя: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username пользователя", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -548,46 +472,28 @@ public class CommandRegistry {
                 System.out.printf("  %d. %s - %s\n", i + 1, role.getName(), role.getDescription());
             }
             
-            System.out.print("Выберите номер роли: ");
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите номер роли", 1, roles.size());
+            Role selectedRole = roles.get(choice - 1);
+            
+            int typeChoice = ConsoleUtils.promptInt(scanner, "Тип назначения (1 - постоянное, 2 - временное)", 1, 2);
+            String reason = ConsoleUtils.promptString(scanner, "Причина назначения", false);
+            
+            AssignmentMetadata meta = AssignmentMetadata.now(sys.getCurrentUser(), reason);
+            
             try {
-                int choice = Integer.parseInt(scanner.nextLine().trim());
-                if (choice < 1 || choice > roles.size()) {
-                    System.out.println("Неверный выбор");
-                    return;
-                }
-                
-                Role selectedRole = roles.get(choice - 1);
-                
-                System.out.print("Тип назначения (1 - постоянное, 2 - временное): ");
-                String typeChoice = scanner.nextLine().trim();
-                
-                System.out.print("Причина назначения: ");
-                String reason = scanner.nextLine().trim();
-                
-                AssignmentMetadata meta = AssignmentMetadata.now(sys.getCurrentUser(), reason);
-                
-                if (typeChoice.equals("1")) {
+                if (typeChoice == 1) {
                     PermanentAssignment assignment = new PermanentAssignment(user, selectedRole, meta);
                     sys.getAssignmentManager().add(assignment);
                     sys.getAuditLog().log("ASSIGN_ROLE", sys.getCurrentUser(), username, "Назначена постоянная роль " + selectedRole.getName());
                     System.out.println("Постоянное назначение создано. ID: " + assignment.assignmentId());
-                } else if (typeChoice.equals("2")) {
-                    System.out.print("Введите дату истечения (ГГГГ-ММ-ДД): ");
-                    String expiresAt = scanner.nextLine().trim();
-                    
-                    System.out.print("Автопродление? (да/нет): ");
-                    String autoRenewStr = scanner.nextLine().trim().toLowerCase();
-                    boolean autoRenew = autoRenewStr.equals("да");
+                } else {
+                    String expiresAt = ConsoleUtils.promptString(scanner, "Введите дату истечения (ГГГГ-ММ-ДД)", true);
+                    boolean autoRenew = ConsoleUtils.promptYesNo(scanner, "Автопродление");
                     
                     TemporaryAssignment assignment = new TemporaryAssignment(user, selectedRole, meta, expiresAt, autoRenew);
                     sys.getAssignmentManager().add(assignment);
                     System.out.println("Временное назначение создано. ID: " + assignment.assignmentId());
-                } else {
-                    System.out.println("Неверный тип назначения");
                 }
-                
-            } catch (NumberFormatException e) {
-                System.out.println("Ошибка ввода");
             } catch (IllegalArgumentException e) {
                 System.out.println("Ошибка: " + e.getMessage());
             }
@@ -595,8 +501,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("revoke-role", "Отозвать роль у пользователя", (scanner, sys) -> {
-            System.out.print("Введите username: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -624,37 +529,21 @@ public class CommandRegistry {
                     a.assignmentId());
             }
             
-            System.out.print("\nВведите номер назначения для отзыва (0 - отмена): ");
-            try {
-                int choice = Integer.parseInt(scanner.nextLine().trim());
-                if (choice == 0) {
-                    System.out.println("Отмена");
-                    return;
-                }
-                
-                if (choice < 1 || choice > assignments.size()) {
-                    System.out.println("Неверный номер");
-                    return;
-                }
-                
-                RoleAssignment toRevoke = assignments.get(choice - 1);
-                
-                if (toRevoke instanceof PermanentAssignment) {
-                    //для постоянных - отзываем
-                    sys.getAssignmentManager().revokeAssignment(toRevoke.assignmentId());
-                    sys.getAuditLog().log("REVOKE_ROLE", sys.getCurrentUser(), username, "Отозвана роль " + toRevoke.role().getName());
-                    System.out.println("Назначение отозвано");
-                } else if (toRevoke instanceof TemporaryAssignment) {
-                    //для временных - помечаем как истекшие
-                    // Временно удаляем назначение
-                    sys.getAssignmentManager().remove(toRevoke);
-                    System.out.println("Временное назначение удалено");
-                }
-                
-            } catch (NumberFormatException e) {
-                System.out.println("Ошибка ввода");
-            } catch (IllegalArgumentException e) {
-                System.out.println("Ошибка: " + e.getMessage());
+            int choice = ConsoleUtils.promptInt(scanner, "\nВведите номер назначения для отзыва (0 - отмена)", 0, assignments.size());
+            if (choice == 0) {
+                System.out.println("Отмена");
+                return;
+            }
+            
+            RoleAssignment toRevoke = assignments.get(choice - 1);
+            
+            if (toRevoke instanceof PermanentAssignment) {
+                sys.getAssignmentManager().revokeAssignment(toRevoke.assignmentId());
+                sys.getAuditLog().log("REVOKE_ROLE", sys.getCurrentUser(), username, "Отозвана роль " + toRevoke.role().getName());
+                System.out.println("Назначение отозвано");
+            } else if (toRevoke instanceof TemporaryAssignment) {
+                sys.getAssignmentManager().remove(toRevoke);
+                System.out.println("Временное назначение удалено");
             }
         });
 
@@ -687,8 +576,7 @@ public class CommandRegistry {
 
 
         parser.registerCommand("assignment-list-user", "Назначения пользователя", (scanner, sys) -> {
-            System.out.print("Введите username: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -721,8 +609,7 @@ public class CommandRegistry {
         
 
         parser.registerCommand("assignment-list-role", "Список пользователей с конкретной ролью", (scanner, sys) -> {
-            System.out.print("Введите имя роли: ");
-            String roleName = scanner.nextLine().trim();
+            String roleName = ConsoleUtils.promptString(scanner, "Введите имя роли", true);
             
             var roleOpt = sys.getRoleManager().findByName(roleName);
             if (roleOpt.isEmpty()) {
@@ -789,8 +676,7 @@ public class CommandRegistry {
             System.out.println("-------------------------------------------------------------");
             
             for (var a : expired) {
-                if (a instanceof TemporaryAssignment) {
-                    TemporaryAssignment temp = (TemporaryAssignment) a;
+                if (a instanceof TemporaryAssignment temp) {
                     System.out.printf("%-15s %-20s %-15s %s\n", 
                         a.user().username(),
                         a.role().getName(),
@@ -811,45 +697,33 @@ public class CommandRegistry {
             System.out.println("Выберите способ поиска назначения:");
             System.out.println("1. По ID назначения");
             System.out.println("2. По username + роль");
-            System.out.print("Выбор (1-2): ");
             
-            String choice = scanner.nextLine().trim();
+            int searchChoice = ConsoleUtils.promptInt(scanner, "Выбор", 1, 2);
             RoleAssignment assignment = null;
             
             try {
-                if (choice.equals("1")) {
-                    System.out.print("Введите ID назначения: ");
-                    String id = scanner.nextLine().trim();
+                if (searchChoice == 1) {
+                    String id = ConsoleUtils.promptString(scanner, "Введите ID назначения", true);
                     var opt = sys.getAssignmentManager().findById(id);
                     if (opt.isEmpty()) {
                         System.out.println("Назначение не найдено");
                         return;
                     }
                     assignment = opt.get();
-                } else if (choice.equals("2")) {
-                    System.out.print("Введите username: ");
-                    String username = scanner.nextLine().trim();
+                } else {
+                    String username = ConsoleUtils.promptString(scanner, "Введите username", true);
+                    String roleName = ConsoleUtils.promptString(scanner, "Введите имя роли", true);
                     
                     var userOpt = sys.getUserManager().findByUsername(username);
-                    if (userOpt.isEmpty()) {
-                        System.out.println("Пользователь не найден");
-                        return;
-                    }
-                    
-                    System.out.print("Введите имя роли: ");
-                    String roleName = scanner.nextLine().trim();
-                    
                     var roleOpt = sys.getRoleManager().findByName(roleName);
-                    if (roleOpt.isEmpty()) {
-                        System.out.println("Роль не найдена");
+                    
+                    if (userOpt.isEmpty() || roleOpt.isEmpty()) {
+                        System.out.println("Пользователь или роль не найдены");
                         return;
                     }
                     
-                    User user = userOpt.get();
-                    Role role = roleOpt.get();
-                    
-                    var assignments = sys.getAssignmentManager().findByUser(user).stream()
-                        .filter(a -> a.role().getId().equals(role.getId()))
+                    var assignments = sys.getAssignmentManager().findByUser(userOpt.get()).stream()
+                        .filter(a -> a.role().getId().equals(roleOpt.get().getId()))
                         .filter(RoleAssignment::isActive)
                         .toList();
                     
@@ -864,21 +738,16 @@ public class CommandRegistry {
                     }
                     
                     assignment = assignments.get(0);
-                } else {
-                    System.out.println("Неверный выбор");
-                    return;
                 }
                 
-                if (!(assignment instanceof TemporaryAssignment)) {
+                if (!(assignment instanceof TemporaryAssignment temp)) {
                     System.out.println("Можно продлить только временные назначения");
                     return;
                 }
                 
-                TemporaryAssignment temp = (TemporaryAssignment) assignment;
                 System.out.println("Текущая дата истечения: " + temp.getExpiresAt());
                 
-                System.out.print("Введите новую дату истечения (ГГГГ-ММ-ДД): ");
-                String newDate = scanner.nextLine().trim();
+                String newDate = ConsoleUtils.promptString(scanner, "Введите новую дату истечения (ГГГГ-ММ-ДД)", true);
                 
                 sys.getAssignmentManager().extendTemporaryAssignment(assignment.assignmentId(), newDate);
                 System.out.println("Назначение продлено до " + newDate);
@@ -897,76 +766,58 @@ public class CommandRegistry {
             System.out.println("4. По статусу (активное/неактивное)");
             System.out.println("5. Назначенные после даты");
             System.out.println("6. Истекающие до даты");
-            System.out.print("Выберите фильтр (1-6): ");
             
-            String choice = scanner.nextLine().trim();
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите фильтр", 1, 6);
+            
             AssignmentFilter filter = null;
             String filterDescription = "";
             
             switch (choice) {
-                case "1": // По пользователю
-                    System.out.print("Введите username: ");
-                    String username = scanner.nextLine().trim();
+                case 1:
+                    String username = ConsoleUtils.promptString(scanner, "Введите username", true);
                     filter = a -> a.user().username().equals(username);
                     filterDescription = "пользователь = " + username;
                     break;
                     
-                case "2": // По роли
-                    System.out.print("Введите имя роли: ");
-                    String roleName = scanner.nextLine().trim();
+                case 2:
+                    String roleName = ConsoleUtils.promptString(scanner, "Введите имя роли", true);
                     filter = a -> a.role().getName().equalsIgnoreCase(roleName);
                     filterDescription = "роль = " + roleName;
                     break;
                     
-                case "3": // По типу
-                    System.out.println("Тип: 1 - постоянное, 2 - временное");
-                    System.out.print("Выбор: ");
-                    String typeChoice = scanner.nextLine().trim();
-                    if (typeChoice.equals("1")) {
+                case 3:
+                    int typeChoice = ConsoleUtils.promptInt(scanner, "Тип (1 - постоянное, 2 - временное)", 1, 2);
+                    if (typeChoice == 1) {
                         filter = a -> "PERMANENT".equals(a.assignmentType());
                         filterDescription = "тип = PERMANENT";
-                    } else if (typeChoice.equals("2")) {
+                    } else {
                         filter = a -> "TEMPORARY".equals(a.assignmentType());
                         filterDescription = "тип = TEMPORARY";
-                    } else {
-                        System.out.println("Неверный выбор");
-                        return;
                     }
                     break;
                     
-                case "4": // По статусу
-                    System.out.println("Статус: 1 - активные, 2 - неактивные");
-                    System.out.print("Выбор: ");
-                    String statusChoice = scanner.nextLine().trim();
-                    if (statusChoice.equals("1")) {
+                case 4:
+                    int statusChoice = ConsoleUtils.promptInt(scanner, "Статус (1 - активные, 2 - неактивные)", 1, 2);
+                    if (statusChoice == 1) {
                         filter = RoleAssignment::isActive;
                         filterDescription = "статус = ACTIVE";
-                    } else if (statusChoice.equals("2")) {
+                    } else {
                         filter = a -> !a.isActive();
                         filterDescription = "статус = INACTIVE";
-                    } else {
-                        System.out.println("Неверный выбор");
-                        return;
                     }
                     break;
                     
-                case "5": // Назначенные после даты
-                    System.out.print("Введите дату (ГГГГ-ММ-ДД): ");
-                    String afterDate = scanner.nextLine().trim();
+                case 5:
+                    String afterDate = ConsoleUtils.promptString(scanner, "Введите дату (ГГГГ-ММ-ДД)", true);
                     filter = AssignmentFilters.assignedAfter(afterDate);
                     filterDescription = "назначено после " + afterDate;
                     break;
                     
-                case "6": // Истекающие до даты
-                    System.out.print("Введите дату (ГГГГ-ММ-ДД): ");
-                    String beforeDate = scanner.nextLine().trim();
+                case 6:
+                    String beforeDate = ConsoleUtils.promptString(scanner, "Введите дату (ГГГГ-ММ-ДД)", true);
                     filter = AssignmentFilters.expiringBefore(beforeDate);
                     filterDescription = "истекает до " + beforeDate;
                     break;
-                    
-                default:
-                    System.out.println("Неверный выбор");
-                    return;
             }
             
             var results = sys.getAssignmentManager().findByFilter(filter);
@@ -993,10 +844,9 @@ public class CommandRegistry {
         });
 
 
-        //кОМАНДЫ ПРОСМОТРА ПРАВ
+        //КОМАНДЫ ПРОСМОТРА ПРАВ
         parser.registerCommand("permissions-user", "Все права пользователя", (scanner, sys) -> {
-            System.out.print("Введите username: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -1016,11 +866,10 @@ public class CommandRegistry {
                 System.out.println("  " + perm.format());
             }
         });
-
         
+
         parser.registerCommand("permissions-check", "Проверить наличие права", (scanner, sys) -> {
-            System.out.print("Введите username: ");
-            String username = scanner.nextLine().trim();
+            String username = ConsoleUtils.promptString(scanner, "Введите username", true);
             
             var userOpt = sys.getUserManager().findByUsername(username);
             if (userOpt.isEmpty()) {
@@ -1028,25 +877,22 @@ public class CommandRegistry {
                 return;
             }
             
-            System.out.print("Введите имя права (например READ): ");
-            String permName = scanner.nextLine().trim().toUpperCase();
-            
-            System.out.print("Введите ресурс (например users): ");
-            String resource = scanner.nextLine().trim().toLowerCase();
+            String permName = ConsoleUtils.promptString(scanner, "Введите имя права (например READ)", true).toUpperCase();
+            String resource = ConsoleUtils.promptString(scanner, "Введите ресурс (например users)", true).toLowerCase();
             
             boolean hasPermission = sys.getAssignmentManager().userHasPermission(
                 userOpt.get(), permName, resource);
             
             if (hasPermission) {
-                System.out.println(" Пользователь имеет это право");
+                System.out.println("✓ Пользователь имеет это право");
             } else {
-                System.out.println(" Пользователь НЕ имеет это право");
+                System.out.println("✗ Пользователь НЕ имеет это право");
             }
         });
 
 
         //СЛУЖЕБНЫЕ КОМАНДЫ
-        parser.registerCommand("help", "Показать список всех команд", (Scanner, sys) -> {
+        parser.registerCommand("help", "Показать список всех команд", (scanner, sys) -> {
             parser.printHelp();
         });
 
@@ -1061,9 +907,7 @@ public class CommandRegistry {
         });
         
         parser.registerCommand("exit", "Выход из программы", (scanner, sys) -> {
-            System.out.print("Вы уверены? (да/нет): ");
-            String confirm = scanner.nextLine().trim().toLowerCase();
-            if (confirm.equals("да")) {
+            if (ConsoleUtils.promptYesNo(scanner, "Вы уверены")) {
                 System.out.println("До свидания!");
                 System.exit(0);
             } else {
@@ -1076,18 +920,16 @@ public class CommandRegistry {
             System.out.println("2. Показать по исполнителю");
             System.out.println("3. Показать по действию");
             System.out.println("4. Сохранить в файл");
-            System.out.print("Выберите опцию (1-4): ");
             
-            String choice = scanner.nextLine().trim();
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите опцию", 1, 4);
             
             switch (choice) {
-                case "1":
+                case 1:
                     sys.getAuditLog().printLog();
                     break;
                     
-                case "2":
-                    System.out.print("Введите имя исполнителя: ");
-                    String performer = scanner.nextLine().trim();
+                case 2:
+                    String performer = ConsoleUtils.promptString(scanner, "Введите имя исполнителя", true);
                     var byPerformer = sys.getAuditLog().getByPerformer(performer);
                     if (byPerformer.isEmpty()) {
                         System.out.println("Записей не найдено");
@@ -1099,9 +941,8 @@ public class CommandRegistry {
                     }
                     break;
                     
-                case "3":
-                    System.out.print("Введите действие: ");
-                    String action = scanner.nextLine().trim();
+                case 3:
+                    String action = ConsoleUtils.promptString(scanner, "Введите действие", true);
                     var byAction = sys.getAuditLog().getByAction(action);
                     if (byAction.isEmpty()) {
                         System.out.println("Записей не найдено");
@@ -1113,73 +954,57 @@ public class CommandRegistry {
                     }
                     break;
                     
-                case "4":
-                    System.out.print("Введите имя файла: ");
-                    String filename = scanner.nextLine().trim();
+                case 4:
+                    String filename = ConsoleUtils.promptString(scanner, "Введите имя файла", true);
                     sys.getAuditLog().saveToFile(filename);
                     break;
-                    
-                default:
-                    System.out.println("Неверный выбор");
             }
         });
 
-
+        
         //КОМАНДЫ ОТЧЁТОВ
         parser.registerCommand("report-users", "Отчёт по пользователям", (scanner, sys) -> {
             System.out.println("\n1. Вывести в консоль");
             System.out.println("2. Сохранить в файл");
-            System.out.print("Выберите опцию (1-2): ");
             
-            String choice = scanner.nextLine().trim();
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите опцию", 1, 2);
             String report = sys.getReportGenerator().generateUserReport(sys.getUserManager(), sys.getAssignmentManager());
             
-            if (choice.equals("1")) {
+            if (choice == 1) {
                 System.out.println(report);
-            } else if (choice.equals("2")) {
-                System.out.print("Введите имя файла: ");
-                String filename = scanner.nextLine().trim();
-                sys.getReportGenerator().exportToFile(report, filename);
             } else {
-                System.out.println("Неверный выбор");
+                String filename = ConsoleUtils.promptString(scanner, "Введите имя файла", true);
+                sys.getReportGenerator().exportToFile(report, filename);
             }
         });
 
         parser.registerCommand("report-roles", "Отчёт по ролям", (scanner, sys) -> {
             System.out.println("\n1. Вывести в консоль");
             System.out.println("2. Сохранить в файл");
-            System.out.print("Выберите опцию (1-2): ");
             
-            String choice = scanner.nextLine().trim();
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите опцию", 1, 2);
             String report = sys.getReportGenerator().generateRoleReport(sys.getRoleManager(), sys.getAssignmentManager());
             
-            if (choice.equals("1")) {
+            if (choice == 1) {
                 System.out.println(report);
-            } else if (choice.equals("2")) {
-                System.out.print("Введите имя файла: ");
-                String filename = scanner.nextLine().trim();
-                sys.getReportGenerator().exportToFile(report, filename);
             } else {
-                System.out.println("Неверный выбор");
+                String filename = ConsoleUtils.promptString(scanner, "Введите имя файла", true);
+                sys.getReportGenerator().exportToFile(report, filename);
             }
         });
 
         parser.registerCommand("report-matrix", "Матрица прав доступа", (scanner, sys) -> {
             System.out.println("\n1. Вывести в консоль");
             System.out.println("2. Сохранить в файл");
-            System.out.print("Выберите опцию (1-2): ");
             
-            String choice = scanner.nextLine().trim();
+            int choice = ConsoleUtils.promptInt(scanner, "Выберите опцию", 1, 2);
             String report = sys.getReportGenerator().generatePermissionMatrix(sys.getUserManager(), sys.getAssignmentManager());
             
-            if (choice.equals("1")) {
+            if (choice == 1) {
                 System.out.println(report);
-            } else if (choice.equals("2")) {
-                System.out.print("Введите имя файла: ");
-                String filename = scanner.nextLine().trim();
-                sys.getReportGenerator().exportToFile(report, filename);
             } else {
-                System.out.println("Неверный выбор");
+                String filename = ConsoleUtils.promptString(scanner, "Введите имя файла", true);
+                sys.getReportGenerator().exportToFile(report, filename);
             }
         });
     }

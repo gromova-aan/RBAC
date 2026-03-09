@@ -1,46 +1,37 @@
-import java.util.regex.Pattern;
 
 public record User (
     String username,
     String fullName,
     String email
 ) {
-    private static final Pattern USERNAME_PATTERN = 
-        Pattern.compile("^[a-zA-Z0-9_]{3,20}$");
-
-    private static final Pattern EMAIL_PATTERN = 
-        Pattern.compile("^[^@]+@[^@]+\\.[^@]+$");
-
     public static User validate(String username, String fullName, String email) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException("Username не может быть пустым");
-        }
 
-        if (fullName == null || fullName.trim().isEmpty()) {
-            throw new IllegalArgumentException("FullName не может быть пустым");
-        }
-
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email не может быть пустым");
-        }
-
-        if (!USERNAME_PATTERN.matcher(username).matches()) {
+        ValidationUtils.requireNonNullEmpty(username, "Username");
+        ValidationUtils.requireNonNullEmpty(fullName, "Full name");
+        ValidationUtils.requireNonNullEmpty(email, "Email");
+        
+        if (!ValidationUtils.isValidUsername(username)) {
             throw new IllegalArgumentException(
-                "Username должен содержать только латинские буквы, цифры и подчеркивание. Длина от 3 до 20 символов."
+                "Username должен содержать только латинские буквы, цифры и подчеркивание, " +
+                "длина от 3 до 20 символов"
             );
         }
-
-        if (!EMAIL_PATTERN.matcher(email).matches()) {
+        
+        if (!ValidationUtils.isValidEmail(email)) {
             throw new IllegalArgumentException(
-                "Email должен содержать @ и точку после @"
+                "Неверный формат email"
             );
         }
-
-        return new User(username, fullName, email);
+        
+        String normUsername = ValidationUtils.normalizeString(username);
+        String normFullName = ValidationUtils.normalizeString(fullName);
+        String normEmail = ValidationUtils.normalizeString(email).toLowerCase();
+        
+        return new User(normUsername, normFullName, normEmail);
     }
     
     public String format() {
-        return String.format ("%s (%s) <%s>", username, fullName, email);
+        return String.format("%s (%s) <%s>", username, fullName, email);
     }
 
     public static void main(String[] args) {

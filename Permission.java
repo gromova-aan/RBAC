@@ -5,36 +5,35 @@ public record Permission (
 ) {
     // Пользовательский канонический конструктор
     public Permission {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Имя права не может быть пустым");
-        }
+        ValidationUtils.requireNonNull(name, "Name");
+        ValidationUtils.requireNonNull(resource, "Resource");
+        ValidationUtils.requireNonNull(description, "Description");
         
-        name = name.trim().toUpperCase();
-
-        if (name.contains(" ")) {
+        String normName = ValidationUtils.normalizeString(name, true);
+        String normResource = ValidationUtils.normalizeString(resource, false);
+        String normDescription = ValidationUtils.normalizeString(description);
+        
+        ValidationUtils.requireNonNullEmpty(normName, "Name");
+        ValidationUtils.requireNonNullEmpty(normResource, "Resource");
+        ValidationUtils.requireNonNullEmpty(normDescription, "Description");
+        
+        if (normName.contains(" ")) {
             throw new IllegalArgumentException("Имя права не должно содержать пробелов");
         }
         
-        if (resource == null || resource.trim().isEmpty()) {
-            throw new IllegalArgumentException("Ресурс не может быть пустым");
-        }
-        resource = resource.trim().toLowerCase();
-        
-        if (description == null || description.trim().isEmpty()) {
-            throw new IllegalArgumentException("Описание не может быть пустым");
-        }
-        description = description.trim();
+        name = normName;
+        resource = normResource;
+        description = normDescription;
     }
-
+    
     public String format() {
         return String.format("%s on %s: %s", name, resource, description);
     }
-
+    
     public boolean matches(String namePattern, String resourcePattern) {
         boolean nameMatches = true;
         boolean resourceMatches = true;
         
-        // Если шаблон не null и не пустой, проверяем содержит ли поле этот шаблон
         if (namePattern != null && !namePattern.isEmpty()) {
             nameMatches = this.name.contains(namePattern.toUpperCase());
         }

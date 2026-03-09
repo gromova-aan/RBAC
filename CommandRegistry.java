@@ -1123,5 +1123,64 @@ public class CommandRegistry {
                     System.out.println("Неверный выбор");
             }
         });
+
+
+        //КОМАНДЫ ОТЧЁТОВ
+        parser.registerCommand("report-users", "Отчёт по пользователям", (scanner, sys) -> {
+            System.out.println("\n1. Вывести в консоль");
+            System.out.println("2. Сохранить в файл");
+            System.out.print("Выберите опцию (1-2): ");
+            
+            String choice = scanner.nextLine().trim();
+            String report = sys.getReportGenerator().generateUserReport(sys.getUserManager(), sys.getAssignmentManager());
+            
+            if (choice.equals("1")) {
+                System.out.println(report);
+            } else if (choice.equals("2")) {
+                System.out.print("Введите имя файла: ");
+                String filename = scanner.nextLine().trim();
+                sys.getReportGenerator().exportToFile(report, filename);
+            } else {
+                System.out.println("Неверный выбор");
+            }
+        });
+
+        parser.registerCommand("report-roles", "Отчёт по ролям", (scanner, sys) -> {
+            System.out.println("\n1. Вывести в консоль");
+            System.out.println("2. Сохранить в файл");
+            System.out.print("Выберите опцию (1-2): ");
+            
+            String choice = scanner.nextLine().trim();
+            String report = sys.getReportGenerator().generateRoleReport(sys.getRoleManager(), sys.getAssignmentManager());
+            
+            if (choice.equals("1")) {
+                System.out.println(report);
+            } else if (choice.equals("2")) {
+                System.out.print("Введите имя файла: ");
+                String filename = scanner.nextLine().trim();
+                sys.getReportGenerator().exportToFile(report, filename);
+            } else {
+                System.out.println("Неверный выбор");
+            }
+        });
+
+        parser.registerCommand("report-matrix", "Матрица прав доступа", (scanner, sys) -> {
+            System.out.println("\n1. Вывести в консоль");
+            System.out.println("2. Сохранить в файл");
+            System.out.print("Выберите опцию (1-2): ");
+            
+            String choice = scanner.nextLine().trim();
+            String report = sys.getReportGenerator().generatePermissionMatrix(sys.getUserManager(), sys.getAssignmentManager());
+            
+            if (choice.equals("1")) {
+                System.out.println(report);
+            } else if (choice.equals("2")) {
+                System.out.print("Введите имя файла: ");
+                String filename = scanner.nextLine().trim();
+                sys.getReportGenerator().exportToFile(report, filename);
+            } else {
+                System.out.println("Неверный выбор");
+            }
+        });
     }
 }

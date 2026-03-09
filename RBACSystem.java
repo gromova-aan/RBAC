@@ -8,6 +8,7 @@ public class RBACSystem {
     private final RoleManager roleManager;
     private final AssignmentManager assignmentManager;
     private final AuditLog auditLog;
+    private final ReportGenerator reportGenerator;
     private String currentUser; //имя тек. пользователя-админа системы
 
     public RBACSystem() {
@@ -15,6 +16,7 @@ public class RBACSystem {
         this.roleManager = new RoleManager();
         this.assignmentManager = new AssignmentManager();
         this.auditLog = new AuditLog();
+        this.reportGenerator = new ReportGenerator();
         this.currentUser = "system";
     }
 
@@ -32,6 +34,10 @@ public class RBACSystem {
 
     public AuditLog getAuditLog() {
         return auditLog;
+    }
+
+    public ReportGenerator getReportGenerator() {
+        return reportGenerator;
     }
     
     public void setCurrentUser(String username) {

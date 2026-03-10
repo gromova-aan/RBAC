@@ -655,15 +655,26 @@ public class CommandRegistry {
             }
             
             System.out.println("\n--- АКТИВНЫЕ НАЗНАЧЕНИЯ ---");
-            System.out.printf("%-15s %-20s %-15s %s\n", "USER", "ROLE", "TYPE", "ASSIGNED AT");
+            System.out.printf("%-15s %-20s %-15s %-15s %s\n", 
+                "USER", "ROLE", "TYPE", "EXPIRES/RELATIVE", "ASSIGNED AT");
             System.out.println("-------------------------------------------------------------");
             
             for (var a : active) {
-                System.out.printf("%-15s %-20s %-15s %s\n", 
-                    a.user().username(),
-                    a.role().getName(),
-                    a.assignmentType(),
-                    a.metadata().assignedAt());
+                if (a instanceof TemporaryAssignment temp) {
+                    System.out.printf("%-15s %-20s %-15s %-15s %s\n", 
+                        a.user().username(),
+                        a.role().getName(),
+                        a.assignmentType(),
+                        temp.getExpiresAt() + " (" + DateUtils.formatRelativeTime(temp.getExpiresAt()) + ")",
+                        a.metadata().assignedAt());
+                } else {
+                    System.out.printf("%-15s %-20s %-15s %-15s %s\n", 
+                        a.user().username(),
+                        a.role().getName(),
+                        a.assignmentType(),
+                        "PERMANENT",
+                        a.metadata().assignedAt());
+                }
             }
         });
         
@@ -677,21 +688,16 @@ public class CommandRegistry {
             }
             
             System.out.println("\n--- ИСТЕКШИЕ НАЗНАЧЕНИЯ ---");
-            System.out.printf("%-15s %-20s %-15s %s\n", "USER", "ROLE", "EXPIRES", "ASSIGNED AT");
+            System.out.printf("%-15s %-20s %-15s %-15s %s\n","USER", "ROLE", "EXPIRES", "RELATIVE", "ASSIGNED AT");
             System.out.println("-------------------------------------------------------------");
             
             for (var a : expired) {
                 if (a instanceof TemporaryAssignment temp) {
-                    System.out.printf("%-15s %-20s %-15s %s\n", 
+                    System.out.printf("%-15s %-20s %-15s %-15s %s\n", 
                         a.user().username(),
                         a.role().getName(),
                         temp.getExpiresAt(),
-                        a.metadata().assignedAt());
-                } else {
-                    System.out.printf("%-15s %-20s %-15s %s\n", 
-                        a.user().username(),
-                        a.role().getName(),
-                        "NEVER",
+                        DateUtils.formatRelativeTime(temp.getExpiresAt()),
                         a.metadata().assignedAt());
                 }
             }
@@ -751,11 +757,21 @@ public class CommandRegistry {
                 }
                 
                 System.out.println("Текущая дата истечения: " + temp.getExpiresAt());
+                System.out.println("(Относительно сегодня: " + DateUtils.formatRelativeTime(temp.getExpiresAt()) + ")");
                 
                 String newDate = ConsoleUtils.promptString(scanner, "Введите новую дату истечения (ГГГГ-ММ-ДД)", true);
                 
+                // Проверяем, что новая дата позже текущей
+                if (DateUtils.isBefore(newDate, DateUtils.getCurrentDate())) {
+                    System.out.println("Предупреждение: новая дата раньше сегодняшнего дня!");
+                    if (!ConsoleUtils.promptYesNo(scanner, "Всё равно продолжить")) {
+                        return;
+                    }
+                }
+                
                 sys.getAssignmentManager().extendTemporaryAssignment(assignment.assignmentId(), newDate);
                 System.out.println("Назначение продлено до " + newDate);
+                System.out.println("(Относительно сегодня: " + DateUtils.formatRelativeTime(newDate) + ")");
                 
             } catch (IllegalArgumentException e) {
                 System.out.println("Ошибка: " + e.getMessage());

@@ -1036,14 +1036,19 @@ public class CommandRegistry {
             
             System.out.println("Генерация отчёта запущена в фоновом режиме...");
             
-            sys.getReportGenerator().generateUserReportAsync(
-                sys.getUserManager(), 
-                sys.getAssignmentManager(),
-                filename,
-                () -> System.out.println(" Отчёт по пользователям сохранён в файл: " + filename)
+            sys.getBackgroundExecutor().submit(
+                () -> {
+                    String report = sys.getReportGenerator().generateUserReport(
+                        sys.getUserManager(), sys.getAssignmentManager()
+                    );
+                    sys.getReportGenerator().exportToFile(report, filename);
+                },
+                () -> System.out.println(" Отчёт по пользователям сохранён в файл: " + filename),
+                () -> System.err.println(" Ошибка при генерации отчёта по пользователям")
             );
             
             System.out.println("Команда выполнена. Отчёт генерируется в фоне.");
+            System.out.println("Активных фоновых задач: " + sys.getBackgroundExecutor().getActiveTaskCount());
         });
 
         parser.registerCommand("report-matrix-async", "Асинхронная матрица прав", (scanner, sys) -> {
@@ -1052,14 +1057,34 @@ public class CommandRegistry {
             
             System.out.println("Генерация матрицы запущена в фоновом режиме...");
             
-            sys.getReportGenerator().generateMatrixAsync(
-                sys.getUserManager(),
-                sys.getAssignmentManager(),
-                filename,
-                () -> System.out.println(" Матрица прав сохранена в файл: " + filename)
+            sys.getBackgroundExecutor().submit(
+                () -> {
+                    String report = sys.getReportGenerator().generatePermissionMatrix(
+                        sys.getUserManager(), sys.getAssignmentManager()
+                    );
+                    sys.getReportGenerator().exportToFile(report, filename);
+                },
+                () -> System.out.println(" Матрица прав сохранена в файл: " + filename),
+                () -> System.err.println(" Ошибка при генерации матрицы прав")
             );
             
             System.out.println("Команда выполнена. Матрица генерируется в фоне.");
+            System.out.println("Активных фоновых задач: " + sys.getBackgroundExecutor().getActiveTaskCount());
+        });
+
+        parser.registerCommand("tasks-status", "Показать статус фоновых задач", (scanner, sys) -> {
+            int active = sys.getBackgroundExecutor().getActiveTaskCount();
+            System.out.println("Активных фоновых задач: " + active);
+        });
+
+        parser.registerCommand("tasks-wait", "Ожидать завершения всех фоновых задач", (scanner, sys) -> {
+            System.out.println("Ожидание завершения всех фоновых задач...");
+            boolean completed = sys.getBackgroundExecutor().awaitTermination(30);
+            if (completed) {
+                System.out.println("Все фоновые задачи завершены.");
+            } else {
+                System.out.println("Таймаут ожидания (30 сек). Некоторые задачи могут ещё выполняться.");
+            }
         });
     }
 }

@@ -1,20 +1,50 @@
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 //Класс для логирования действий пользователей.
 public class AuditLog {
+
+    private final List<AuditEntry> entries = new CopyOnWriteArrayList<>(); //записи аудита
     
-    private final List<AuditEntry> entries = new ArrayList<>(); //записи аудита
+    // Очередь для асинхронного логирования
+    private final BlockingQueue<AuditEntry> logQueue = new LinkedBlockingQueue<>();
     
-    //Добавляет запись в лог.
+    // Флаг работы фонового логгера
+    private volatile boolean running = true;
+    
+    // Исполнитель для фоновой записи
+    private final ExecutorService loggerExecutor;
+    
+    public AuditLog() {
+        // Создаём один поток для обработки очереди
+        this.loggerExecutor = Executors.newSingleThreadExecutor();
+        
+        // Запускаем фоновый обработчик
+        loggerExecutor.submit(this::processLogQueue);
+    }
+    
     public void log(String action, String performer, String target, String details) {
         String timestamp = java.time.LocalDateTime.now()
             .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         
         AuditEntry entry = new AuditEntry(timestamp, action, performer, target, details);
+        
+        // Добавляем в коллекцию для синхронного доступа
         entries.add(entry);
+    }
+    
+    private void processLogQueue() {
+        while (running) {
+            try {
+                AuditEntry entry = logQueue.poll(1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
     }
     
     public List<AuditEntry> getAll() {
@@ -22,13 +52,13 @@ public class AuditLog {
     }
     
     public List<AuditEntry> getByPerformer(String performer) {
-        return entries.stream()
+        return entries.parallelStream()
             .filter(e -> e.performer().equals(performer))
             .collect(Collectors.toList());
     }
     
     public List<AuditEntry> getByAction(String action) {
-        return entries.stream()
+        return entries.parallelStream()
             .filter(e -> e.action().equals(action))
             .collect(Collectors.toList());
     }
@@ -74,5 +104,10 @@ public class AuditLog {
         } catch (IOException e) {
             System.out.println("Ошибка при сохранении лога: " + e.getMessage());
         }
+    }
+    
+    public void shutdown() {
+        running = false;
+        loggerExecutor.shutdown();
     }
 }

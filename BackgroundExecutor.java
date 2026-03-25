@@ -64,4 +64,24 @@ public class BackgroundExecutor {
     public void shutdownNow() {
         executor.shutdownNow();
     }
+
+    public boolean isTerminated() {
+        return executor.isTerminated();
+    }
+
+    public void shutdownAndAwaitTermination() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    System.err.println("Executor did not terminate");
+                }
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+    
 }

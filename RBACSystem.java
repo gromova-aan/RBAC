@@ -186,4 +186,22 @@ public class RBACSystem {
         return sb.toString();
     }
 
+    public void shutdown() {
+        System.out.println("Остановка фоновых сервисов...");
+        
+        if (backgroundExecutor != null) {
+            backgroundExecutor.shutdownAndAwaitTermination();
+        }
+        
+        if (taskScheduler != null) {
+            taskScheduler.shutdown();
+        }
+        
+        if (auditLog != null) {
+            auditLog.shutdown();
+        }
+        
+        System.out.println("Все фоновые сервисы остановлены.");
+    }
+
 }

@@ -18,6 +18,9 @@ public class ThreadTests {
         testScheduledTasks();
         testDataIntegrity();
         
+        RBACSystem tempSystem = new RBACSystem();
+        tempSystem.shutdown();
+
         printResults();
     }
     

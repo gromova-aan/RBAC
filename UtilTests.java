@@ -18,6 +18,8 @@ public class UtilTests {
         System.out.println("Пройдено: " + testsPassed);
         System.out.println("Провалено: " + testsFailed);
         System.out.println("Всего тестов: " + (testsPassed + testsFailed));
+
+        System.exit(0);
     }
     
     private static void testValidationUtils() {

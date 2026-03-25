@@ -26,6 +26,13 @@ public class CommandTests {
         System.out.println("Пройдено: " + testsPassed);
         System.out.println("Провалено: " + testsFailed);
         System.out.println("Всего тестов: " + (testsPassed + testsFailed));
+
+        if (system != null) {
+            system.shutdown();
+        }
+
+        System.out.println("\n=== ТЕСТИРОВАНИЕ ЗАВЕРШЕНО ===");
+        System.exit(0);
     }
 
     private static void setup() {

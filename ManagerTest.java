@@ -4,6 +4,7 @@ public class ManagerTest {
         testUserManager();
         testRoleManager();
         testAssignmentManager();
+        System.exit(0);
     }
     
     static void testUserManager() {

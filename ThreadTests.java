@@ -22,6 +22,7 @@ public class ThreadTests {
         tempSystem.shutdown();
 
         printResults();
+        System.exit(0);
     }
     
     private static void testThreadSafeManagers() {

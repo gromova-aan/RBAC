@@ -25,15 +25,19 @@ jobs:
     - name: Run CommandTests
       run: java CommandTests
       continue-on-error: false
+      timeout-minutes: 1
 
     - name: Run ManagerTest
       run: java ManagerTest
       continue-on-error: false
+      timeout-minutes: 1
     
     - name: Run UtilTests
       run: java UtilTests
       continue-on-error: false
+      timeout-minutes: 1
 
     - name: Run ThreadTests
       run: java ThreadTests
       continue-on-error: false
+      timeout-minutes: 1

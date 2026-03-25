@@ -905,9 +905,9 @@ public class CommandRegistry {
                 userOpt.get(), permName, resource);
             
             if (hasPermission) {
-                System.out.println("✓ Пользователь имеет это право");
+                System.out.println(" Пользователь имеет это право");
             } else {
-                System.out.println("✗ Пользователь НЕ имеет это право");
+                System.out.println(" Пользователь НЕ имеет это право");
             }
         });
 
@@ -1027,6 +1027,39 @@ public class CommandRegistry {
                 String filename = ConsoleUtils.promptString(scanner, "Введите имя файла", true);
                 sys.getReportGenerator().exportToFile(report, filename);
             }
+        });
+
+        // АССИНХРОННЫЕ КОМАНДЫ ОТЧЕТОВ
+        parser.registerCommand("report-users-async", "Асинхронный отчёт по пользователям", (scanner, sys) -> {
+            System.out.print("Введите имя файла для сохранения: ");
+            String filename = scanner.nextLine().trim();
+            
+            System.out.println("Генерация отчёта запущена в фоновом режиме...");
+            
+            sys.getReportGenerator().generateUserReportAsync(
+                sys.getUserManager(), 
+                sys.getAssignmentManager(),
+                filename,
+                () -> System.out.println(" Отчёт по пользователям сохранён в файл: " + filename)
+            );
+            
+            System.out.println("Команда выполнена. Отчёт генерируется в фоне.");
+        });
+
+        parser.registerCommand("report-matrix-async", "Асинхронная матрица прав", (scanner, sys) -> {
+            System.out.print("Введите имя файла для сохранения: ");
+            String filename = scanner.nextLine().trim();
+            
+            System.out.println("Генерация матрицы запущена в фоновом режиме...");
+            
+            sys.getReportGenerator().generateMatrixAsync(
+                sys.getUserManager(),
+                sys.getAssignmentManager(),
+                filename,
+                () -> System.out.println(" Матрица прав сохранена в файл: " + filename)
+            );
+            
+            System.out.println("Команда выполнена. Матрица генерируется в фоне.");
         });
     }
 }

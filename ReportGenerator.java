@@ -1,8 +1,9 @@
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
-//Класс для генерации отчётов по системе RBAC
 public class ReportGenerator {
     
     public String generateUserReport(UserManager userManager, AssignmentManager assignmentManager) {
@@ -19,28 +20,34 @@ public class ReportGenerator {
             return sb.toString();
         }
         
-        for (User user : users) {
-            sb.append("┌───────────────────────────────────────┐\n");
-            sb.append(String.format("│ %-37s │\n", "Пользователь: " + user.username()));
-            sb.append("├───────────────────────────────────────┤\n");
-            sb.append(String.format("│ Полное имя: %-28s │\n", user.fullName()));
-            sb.append(String.format("│ Email: %-33s │\n", user.email()));
-            sb.append("├───────────────────────────────────────┤\n");
+        // Параллельная обработка пользователей
+        users.parallelStream().forEach(user -> {
+            // Синхронизируем доступ к StringBuilder через synchronized блок
+            synchronized (sb) {
+                sb.append("┌───────────────────────────────────────┐\n");
+                sb.append(String.format("│ %-37s │\n", "Пользователь: " + user.username()));
+                sb.append("├───────────────────────────────────────┤\n");
+                sb.append(String.format("│ Полное имя: %-28s │\n", user.fullName()));
+                sb.append(String.format("│ Email: %-33s │\n", user.email()));
+                sb.append("├───────────────────────────────────────┤\n");
+            }
             
             List<RoleAssignment> assignments = assignmentManager.findByUser(user);
             
-            if (assignments.isEmpty()) {
-                sb.append("│ Роли: не назначены                    │\n");
-            } else {
-                sb.append("│ Роли:                                  │\n");
-                for (RoleAssignment ra : assignments) {
-                    String status = ra.isActive() ? "ACTIVE" : "INACTIVE";
-                    sb.append(String.format("│   - %-20s [%-8s] │\n", 
-                        ra.role().getName(), status));
+            synchronized (sb) {
+                if (assignments.isEmpty()) {
+                    sb.append("│ Роли: не назначены                    │\n");
+                } else {
+                    sb.append("│ Роли:                                  │\n");
+                    for (RoleAssignment ra : assignments) {
+                        String status = ra.isActive() ? "ACTIVE" : "INACTIVE";
+                        sb.append(String.format("│   - %-20s [%-8s] │\n", 
+                            ra.role().getName(), status));
+                    }
                 }
+                sb.append("└───────────────────────────────────────┘\n\n");
             }
-            sb.append("└───────────────────────────────────────┘\n\n");
-        }
+        });
         
         sb.append(String.format("Всего пользователей: %d\n", users.size()));
         
@@ -65,12 +72,18 @@ public class ReportGenerator {
             "РОЛЬ", "ОПИСАНИЕ", "КОЛ-ВО ПРАВ", "ПОЛЬЗОВАТЕЛЕЙ"));
         sb.append("----------------------------------------------------------------\n");
         
+        // Параллельная обработка ролей
+        Map<Role, Long> roleUserCount = roles.parallelStream()
+            .collect(Collectors.toConcurrentMap(
+                role -> role,
+                role -> assignmentManager.findByRole(role).stream()
+                    .map(a -> a.user().username())
+                    .distinct()
+                    .count()
+            ));
+        
         for (Role role : roles) {
-            List<RoleAssignment> assignments = assignmentManager.findByRole(role);
-            long userCount = assignments.stream()
-                .map(a -> a.user().username())
-                .distinct()
-                .count();
+            long userCount = roleUserCount.getOrDefault(role, 0L);
             
             sb.append(String.format("%-20s %-30s %-15d %-10d\n",
                 role.getName(),
@@ -99,16 +112,18 @@ public class ReportGenerator {
             return sb.toString();
         }
         
-        // Собираем все уникальные ресурсы
-        Set<String> allResources = new TreeSet<>();
-        for (User user : users) {
-            Set<Permission> perms = assignmentManager.getUserPermissions(user);
-            for (Permission p : perms) {
+        // Параллельный сбор всех ресурсов
+        Set<String> allResources = Collections.synchronizedSet(new HashSet<>());
+    
+        users.parallelStream().forEach(user -> {
+            Set<Permission> userPerms = assignmentManager.getUserPermissions(user);
+            for (Permission p : userPerms) {
                 allResources.add(p.resource());
             }
-        }
+        });
         
         List<String> resources = new ArrayList<>(allResources);
+        Collections.sort(resources);
         
         // Заголовок таблицы
         sb.append(String.format("%-15s", "ПОЛЬЗОВАТЕЛЬ"));
@@ -124,27 +139,38 @@ public class ReportGenerator {
         }
         sb.append("\n");
         
-        // Строки для каждого пользователя
-        for (User user : users) {
-            sb.append(String.format("%-15s", user.username()));
-            
+        // Параллельная обработка пользователей для матрицы
+        // Используем Map для безопасного сбора результатов
+        Map<String, String> userPermissionsMatrix = new ConcurrentHashMap<>();
+        
+        users.parallelStream().forEach(user -> {
             Set<Permission> userPerms = assignmentManager.getUserPermissions(user);
+            StringBuilder rowBuilder = new StringBuilder();
             
             for (String resource : resources) {
-                String permStr = "";
+                StringBuilder permStr = new StringBuilder();
                 for (Permission p : userPerms) {
                     if (p.resource().equals(resource)) {
-                        permStr += p.name().charAt(0);
+                        permStr.append(p.name().charAt(0));
                     }
                 }
-                if (permStr.isEmpty()) {
-                    permStr = "-";
+                if (permStr.length() == 0) {
+                    permStr.append("-");
                 }
-                sb.append(String.format(" %-12s", permStr));
+                rowBuilder.append(String.format(" %-12s", permStr.toString()));
             }
+            
+            userPermissionsMatrix.put(user.username(), rowBuilder.toString());
+        });
+        
+        // Выводим результаты в правильном порядке
+        for (User user : users) {
+            sb.append(String.format("%-15s", user.username()));
+            sb.append(userPermissionsMatrix.getOrDefault(user.username(), ""));
             sb.append("\n");
         }
         
+        // Легенда
         sb.append("\nЛегенда: R=READ, W=WRITE, D=DELETE, и т.д.\n");
         
         return sb.toString();
@@ -157,6 +183,38 @@ public class ReportGenerator {
         } catch (IOException e) {
             System.out.println("Ошибка при сохранении отчёта: " + e.getMessage());
         }
+    }
+    
+    //Генерирует отчёт асинхронно (для использования в отдельном потоке)
+    public void generateUserReportAsync(UserManager userManager, AssignmentManager assignmentManager, 
+                                        String filename, Runnable onComplete) {
+        new Thread(() -> {
+            try {
+                String report = generateUserReport(userManager, assignmentManager);
+                exportToFile(report, filename);
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            } catch (Exception e) {
+                System.err.println("Ошибка при асинхронной генерации отчёта: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    //Генерирует матрицу прав асинхронно
+    public void generateMatrixAsync(UserManager userManager, AssignmentManager assignmentManager,
+                                    String filename, Runnable onComplete) {
+        new Thread(() -> {
+            try {
+                String report = generatePermissionMatrix(userManager, assignmentManager);
+                exportToFile(report, filename);
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            } catch (Exception e) {
+                System.err.println("Ошибка при асинхронной генерации матрицы: " + e.getMessage());
+            }
+        }).start();
     }
 
     //Обрезает длинную строку

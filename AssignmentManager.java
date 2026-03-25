@@ -1,15 +1,35 @@
-
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-public class AssignmentManager implements Repository<RoleAssignment>{
-    private final Map<String, RoleAssignment> assignments = new HashMap<>();
+public class AssignmentManager implements Repository<RoleAssignment> {
+    // Хранилище назначений: ключ - assignmentId, значение - RoleAssignment (потокобезопасная Map)
+    private final Map<String, RoleAssignment> assignments = new ConcurrentHashMap<>();
+
+    private UserManager userManager;
+    private RoleManager roleManager;
+    
+    public AssignmentManager() {
+    }
+    
+    public AssignmentManager(UserManager userManager, RoleManager roleManager) {
+        this.userManager = userManager;
+        this.roleManager = roleManager;
+    }
+    
+    public void setUserManager(UserManager userManager) {
+        this.userManager = userManager;
+    }
+    
+    public void setRoleManager(RoleManager roleManager) {
+        this.roleManager = roleManager;
+    }
 
     @Override
     public void add(RoleAssignment assignment) {
@@ -19,26 +39,48 @@ public class AssignmentManager implements Repository<RoleAssignment>{
         
         String assignmentId = assignment.assignmentId();
         
+        // атомарная проверка существования
         if (assignments.containsKey(assignmentId)) {
             throw new IllegalArgumentException(
                 "Назначение с ID '" + assignmentId + "' уже существует"
             );
         }
         
-        //проверяем на дублирование активного назначения
+        // проверяем существование пользователя и роли (если менеджеры доступны)
+        if (userManager != null) {
+            String username = assignment.user().username();
+            if (!userManager.exists(username)) {
+                throw new IllegalArgumentException(
+                    "Пользователь '" + username + "' не существует"
+                );
+            }
+        }
+        
+        if (roleManager != null) {
+            String roleName = assignment.role().getName();
+            if (!roleManager.exists(roleName)) {
+                throw new IllegalArgumentException(
+                    "Роль '" + roleName + "' не существует"
+                );
+            }
+        }
+        
+        // проверяем на дублирование активного назначения (параллельно для производительности)
         String username = assignment.user().username();
         String roleId = assignment.role().getId();
         
-        for (RoleAssignment existing : assignments.values()) {
-            if (existing.user().username().equals(username) && 
+        boolean hasDuplicate = assignments.values().parallelStream()
+            .anyMatch(existing -> 
+                existing.user().username().equals(username) && 
                 existing.role().getId().equals(roleId) && 
-                existing.isActive()) {
-                
-                throw new IllegalArgumentException(
-                    "У пользователя '" + username + "' уже есть активное назначение роли '" + 
-                    assignment.role().getName() + "'"
-                );
-            }
+                existing.isActive()
+            );
+        
+        if (hasDuplicate) {
+            throw new IllegalArgumentException(
+                "У пользователя '" + username + "' уже есть активное назначение роли '" + 
+                assignment.role().getName() + "'"
+            );
         }
 
         assignments.put(assignmentId, assignment);
@@ -52,12 +94,8 @@ public class AssignmentManager implements Repository<RoleAssignment>{
         
         String assignmentId = assignment.assignmentId();
         
-        if (assignments.containsKey(assignmentId)) {
-            assignments.remove(assignmentId);
-            return true;
-        }
-        
-        return false;
+        // атомарное удаление
+        return assignments.remove(assignmentId) != null;
     }
 
     @Override
@@ -72,7 +110,8 @@ public class AssignmentManager implements Repository<RoleAssignment>{
     
     @Override
     public List<RoleAssignment> findAll() {
-        return new ArrayList<>(assignments.values());
+        // возвращаем потокобезопасную копию
+        return new CopyOnWriteArrayList<>(assignments.values());
     }
 
     @Override
@@ -90,16 +129,12 @@ public class AssignmentManager implements Repository<RoleAssignment>{
             return new ArrayList<>();
         }
         
-        List<RoleAssignment> result = new ArrayList<>();
         String username = user.username();
         
-        for (RoleAssignment assignment : assignments.values()) {
-            if (assignment.user().username().equals(username)) {
-                result.add(assignment);
-            }
-        }
-        
-        return result;
+        // параллельная фильтрация для улучшения производительности
+        return assignments.values().parallelStream()
+            .filter(a -> a.user().username().equals(username))
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public List<RoleAssignment> findByRole(Role role) { //все назначения для роли
@@ -107,16 +142,12 @@ public class AssignmentManager implements Repository<RoleAssignment>{
             return new ArrayList<>();
         }
         
-        List<RoleAssignment> result = new ArrayList<>();
         String roleId = role.getId();
         
-        for (RoleAssignment assignment : assignments.values()) {
-            if (assignment.role().getId().equals(roleId)) {
-                result.add(assignment);
-            }
-        }
-        
-        return result;
+        // параллельная фильтрация для улучшения производительности
+        return assignments.values().parallelStream()
+            .filter(a -> a.role().getId().equals(roleId))
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public List<RoleAssignment> findByFilter(AssignmentFilter filter) {
@@ -124,15 +155,10 @@ public class AssignmentManager implements Repository<RoleAssignment>{
             return findAll();
         }
         
-        List<RoleAssignment> result = new ArrayList<>();
-        
-        for (RoleAssignment assignment : assignments.values()) {
-            if (filter.test(assignment)) {
-                result.add(assignment);
-            }
-        }
-        
-        return result;
+        // параллельная фильтрация
+        return assignments.values().parallelStream()
+            .filter(filter::test)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public List<RoleAssignment> findAll(AssignmentFilter filter, Comparator<RoleAssignment> sorter) {
@@ -146,27 +172,17 @@ public class AssignmentManager implements Repository<RoleAssignment>{
     }
 
     public List<RoleAssignment> getActiveAssignments() { //только активные назначения
-        List<RoleAssignment> result = new ArrayList<>();
-        
-        for (RoleAssignment assignment : assignments.values()) {
-            if (assignment.isActive()) {
-                result.add(assignment);
-            }
-        }
-        
-        return result;
+        // параллельная фильтрация
+        return assignments.values().parallelStream()
+            .filter(RoleAssignment::isActive)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public List<RoleAssignment> getExpiredAssignments() { //истекшие
-        List<RoleAssignment> result = new ArrayList<>();
-        
-        for (RoleAssignment assignment : assignments.values()) {
-            if (!assignment.isActive()) {
-                result.add(assignment);
-            }
-        }
-        
-        return result;
+        // параллельная фильтрация
+        return assignments.values().parallelStream()
+            .filter(a -> !a.isActive())
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     }
 
     public boolean userHasRole(User user, Role role) {
@@ -177,15 +193,13 @@ public class AssignmentManager implements Repository<RoleAssignment>{
         String username = user.username();
         String roleId = role.getId();
         
-        for (RoleAssignment assignment : assignments.values()) {
-            if (assignment.user().username().equals(username) && 
-                assignment.role().getId().equals(roleId) && 
-                assignment.isActive()) {
-                return true;
-            }
-        }
-        
-        return false;
+        // параллельная проверка
+        return assignments.values().parallelStream()
+            .anyMatch(a -> 
+                a.user().username().equals(username) && 
+                a.role().getId().equals(roleId) && 
+                a.isActive()
+            );
     }
 
     public boolean userHasPermission(User user, String permissionName, String resource) {
@@ -195,14 +209,9 @@ public class AssignmentManager implements Repository<RoleAssignment>{
         
         Set<Permission> userPermissions = getUserPermissions(user);
         
-        for (Permission permission : userPermissions) {
-            if (permission.name().equals(permissionName) && 
-                permission.resource().equals(resource)) {
-                return true;
-            }
-        }
-        
-        return false;
+        // параллельная проверка
+        return userPermissions.parallelStream()
+            .anyMatch(p -> p.name().equals(permissionName) && p.resource().equals(resource));
     }
 
     public Set<Permission> getUserPermissions(User user) { //получает все права из всех его активных ролей
@@ -210,16 +219,13 @@ public class AssignmentManager implements Repository<RoleAssignment>{
             return new HashSet<>();
         }
         
-        Set<Permission> permissions = new HashSet<>();
         String username = user.username();
         
-        for (RoleAssignment assignment : assignments.values()) {
-            if (assignment.user().username().equals(username) && assignment.isActive()) {
-                permissions.addAll(assignment.role().getPermissions());
-            }
-        }
-        
-        return permissions;
+        // параллельная агрегация прав
+        return assignments.values().parallelStream()
+            .filter(a -> a.user().username().equals(username) && a.isActive())
+            .flatMap(a -> a.role().getPermissions().stream())
+            .collect(HashSet::new, HashSet::add, HashSet::addAll);
     }
 
     public void revokeAssignment(String assignmentId) { //отзывает назначение по айди
@@ -227,21 +233,24 @@ public class AssignmentManager implements Repository<RoleAssignment>{
             throw new IllegalArgumentException("ID назначения не может быть пустым");
         }
         
-        RoleAssignment assignment = assignments.get(assignmentId);
-        if (assignment == null) {
+        // атомарное обновление
+        assignments.computeIfPresent(assignmentId.trim(), (id, assignment) -> {
+            if (!(assignment instanceof PermanentAssignment)) {
+                throw new IllegalArgumentException(
+                    "Можно отозвать только постоянные назначения"
+                );
+            }
+            
+            PermanentAssignment perm = (PermanentAssignment) assignment;
+            perm.revoke();
+            return perm;
+        });
+        
+        if (!assignments.containsKey(assignmentId.trim())) {
             throw new IllegalArgumentException(
                 "Назначение с ID '" + assignmentId + "' не найдено"
             );
         }
-        
-        if (!(assignment instanceof PermanentAssignment)) {
-            throw new IllegalArgumentException(
-                "Можно отозвать только постоянные назначения"
-            );
-        }
-        
-        PermanentAssignment perm = (PermanentAssignment) assignment;
-        perm.revoke();
     }
 
     public void extendTemporaryAssignment(String assignmentId, String newExpirationDate) { //продлевает временное назнач
@@ -253,21 +262,24 @@ public class AssignmentManager implements Repository<RoleAssignment>{
             throw new IllegalArgumentException("Новая дата не может быть пустой");
         }
         
-        RoleAssignment assignment = assignments.get(assignmentId);
-        if (assignment == null) {
+        // атомарное обновление
+        assignments.computeIfPresent(assignmentId.trim(), (id, assignment) -> {
+            if (!(assignment instanceof TemporaryAssignment)) {
+                throw new IllegalArgumentException(
+                    "Можно продлить только временные назначения"
+                );
+            }
+            
+            TemporaryAssignment temp = (TemporaryAssignment) assignment;
+            temp.extend(newExpirationDate);
+            return temp;
+        });
+        
+        if (!assignments.containsKey(assignmentId.trim())) {
             throw new IllegalArgumentException(
                 "Назначение с ID '" + assignmentId + "' не найдено"
             );
         }
-        
-        if (!(assignment instanceof TemporaryAssignment)) {
-            throw new IllegalArgumentException(
-                "Можно продлить только временные назначения"
-            );
-        }
-        
-        TemporaryAssignment temp = (TemporaryAssignment) assignment;
-        temp.extend(newExpirationDate);
     }
 
     public boolean isRoleAssigned(Role role) { //назначена ли роль хотя бы одному пользователю
@@ -277,12 +289,8 @@ public class AssignmentManager implements Repository<RoleAssignment>{
         
         String roleId = role.getId();
         
-        for (RoleAssignment assignment : assignments.values()) {
-            if (assignment.role().getId().equals(roleId)) {
-                return true;
-            }
-        }
-        
-        return false;
+        // параллельная проверка
+        return assignments.values().parallelStream()
+            .anyMatch(a -> a.role().getId().equals(roleId));
     }
 }

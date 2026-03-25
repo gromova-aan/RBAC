@@ -10,6 +10,7 @@ public class RBACSystem {
     private final AuditLog auditLog;
     private final ReportGenerator reportGenerator;
     private final BackgroundExecutor backgroundExecutor;
+    private final TaskScheduler taskScheduler;
     private String currentUser; //имя тек. пользователя-админа системы
 
     public RBACSystem() {
@@ -19,7 +20,10 @@ public class RBACSystem {
         this.auditLog = new AuditLog();
         this.reportGenerator = new ReportGenerator();
         this.backgroundExecutor = new BackgroundExecutor();
+        this.taskScheduler = new TaskScheduler(this);
         this.currentUser = "system";
+
+        startDefaultScheduledTasks();
     }
 
     public UserManager getUserManager() {
@@ -44,6 +48,18 @@ public class RBACSystem {
 
     public BackgroundExecutor getBackgroundExecutor() {
         return backgroundExecutor;
+    }
+
+    private void startDefaultScheduledTasks() {
+        // Проверка истёкших назначений каждые 30 секунд
+        taskScheduler.startExpiredAssignmentsChecker(30);
+        
+        // Отчёт статистики каждые 60 секунд
+        taskScheduler.startStatisticsReporter(60);
+    }
+    
+    public TaskScheduler getTaskScheduler() {
+        return taskScheduler;
     }
     
     public void setCurrentUser(String username) {

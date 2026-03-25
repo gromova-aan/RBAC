@@ -1086,5 +1086,42 @@ public class CommandRegistry {
                 System.out.println("Таймаут ожидания (30 сек). Некоторые задачи могут ещё выполняться.");
             }
         });
+
+        //КОМАНДЫ ДЛЯ УПРАВЛЕНИЯ ПЕРИОДИЧЕСКИМИ ЗАДАЧАМИ
+        parser.registerCommand("scheduler-status", "Статус периодических задач", (scanner, sys) -> {
+            if (sys.getTaskScheduler().isRunning()) {
+                System.out.println("Периодические задачи активны");
+                System.out.println("  - Проверка истекших назначений: каждые 30 сек");
+                System.out.println("  - Отчёт статистики: каждые 60 сек");
+            } else {
+                System.out.println("Периодические задачи остановлены");
+            }
+        });
+
+        parser.registerCommand("scheduler-check-expired", "Принудительная проверка истекших назначений", (scanner, sys) -> {
+            System.out.println("Запуск принудительной проверки истекших назначений...");
+            sys.getBackgroundExecutor().submit(() -> {
+                sys.getTaskScheduler().forceCheckExpired();
+            });
+            System.out.println("Проверка запущена в фоновом режиме.");
+        });
+
+        parser.registerCommand("scheduler-stats", "Принудительный отчёт статистики", (scanner, sys) -> {
+            System.out.println("Запуск принудительного отчёта статистики...");
+            sys.getBackgroundExecutor().submit(() -> {
+                sys.getTaskScheduler().forceStatisticsReport();
+            });
+            System.out.println("Отчёт запущен в фоновом режиме.");
+        });
+
+        parser.registerCommand("scheduler-stop", "Остановить периодические задачи", (scanner, sys) -> {
+            sys.getTaskScheduler().shutdown();
+            System.out.println("Периодические задачи остановлены.");
+        });
+        
+        parser.registerCommand("scheduler-start", "Запустить периодические задачи", (scanner, sys) -> {
+            System.out.println("Для перезапуска требуется перезагрузка системы.");
+            System.out.println("Выход из программы и запуск заново.");
+        });
     }
 }

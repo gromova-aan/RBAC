@@ -41,19 +41,21 @@ public class TaskScheduler {
     private void checkAndMarkExpiredAssignments() {
         List<RoleAssignment> allAssignments = system.getAssignmentManager().findAll();
         int expiredCount = 0;
-        
+
         for (RoleAssignment assignment : allAssignments) {
             if (assignment instanceof TemporaryAssignment) {
                 TemporaryAssignment temp = (TemporaryAssignment) assignment;
                 
-                // Если назначение активно, но дата истечения уже прошла
-                if (temp.isActive() && temp.isExpired()) {
-                    // Помечаем как неактивное (удаляем из системы или отзываем)
-                    // Для временных назначений можно просто удалить
+                boolean isExpired = temp.isExpired();
+                System.out.println("[DEBUG] Назначение: " + temp.assignmentId() + 
+                    ", дата: " + temp.getExpiresAt() + 
+                    ", isExpired: " + isExpired +
+                    ", isActive: " + temp.isActive());
+                
+                if (isExpired) {
                     system.getAssignmentManager().remove(temp);
                     expiredCount++;
                     
-                    // Логируем истекшее назначение
                     system.getAuditLog().log(
                         "AUTO_EXPIRE",
                         "system",

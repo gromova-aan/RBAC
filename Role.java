@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Role {
     private final String id;
@@ -6,7 +7,7 @@ public class Role {
     private final String description;
     private final Set<Permission> permissions;
 
-    private static int nextId = 1;       //генератор id
+    private static final AtomicInteger nextId = new AtomicInteger(1);
 
     public Role(String name, String description, Set<Permission> permissions) {
         if (name == null || name.trim().isEmpty()) {
@@ -32,7 +33,7 @@ public class Role {
     }
 
     private static String generateId() {
-        return "role_" + nextId++;
+        return "role_" + nextId.getAndIncrement();
     }
 
     //геттеры

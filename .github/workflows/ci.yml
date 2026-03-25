@@ -33,3 +33,7 @@ jobs:
     - name: Run UtilTests
       run: java UtilTests
       continue-on-error: false
+
+    - name: Run ThreadTests
+      run: java ThreadTests
+      continue-on-error: false
